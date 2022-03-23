@@ -1,4 +1,4 @@
-import * as BN from "bn.js";
+import BN from "bn.js";
 import { Bitstream } from "../bitstream";
 import { Constants } from "../constants";
 import { EdDSA } from "../eddsa";
@@ -19,6 +19,7 @@ interface AccountUpdate {
  * Processes account update requests.
  */
 export class AccountUpdateProcessor {
+
   public static extractData(data: Bitstream) {
     const update: AccountUpdate = {};
     let offset = 1;

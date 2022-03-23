@@ -1,4 +1,4 @@
-import * as BN from "bn.js";
+import BN from "bn.js";
 import { Bitstream } from "../bitstream";
 import { Constants } from "../constants";
 import { fromFloat } from "../float";
@@ -15,6 +15,7 @@ interface Transfer {
   from?: string;
   to?: string;
   data?: string;
+  toTokenID?: number;
 }
 
 /**
@@ -53,6 +54,11 @@ export class TransferProcessor {
     offset += 20;
     transfer.from = data.extractAddress(offset);
     offset += 20;
+    transfer.toTokenID = data.extractUint16(offset);
+    offset += 2;
+
+    transfer.toTokenID =
+      transfer.toTokenID !== 0 ? transfer.toTokenID : transfer.tokenID;
 
     return transfer;
   }

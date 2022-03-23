@@ -1,6 +1,5 @@
-import * as BN from "bn.js";
+import BN from "bn.js";
 import { Bitstream } from "../bitstream";
-import { Constants } from "../constants";
 
 interface AmmUpdate {
   owner?: string;

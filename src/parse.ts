@@ -1,26 +1,35 @@
-const Web3 = require("web3"); // tslint:disable-line
 const PrivateKeyProvider = require("truffle-privatekey-provider");
 import { Bitstream } from "./bitstream";
 import * as BN from "bn.js";
 const assert = require("assert");
 const InputDataDecoder = require('ethereum-input-data-decoder');
 import {
-  BlockContext,
   TransactionType
 } from "./types";
 import { DepositProcessor } from "./request_processors/deposit_processor";
 import { AccountUpdateProcessor } from "./request_processors/account_update_processor";
+import { SpotTradeProcessor } from "./request_processors/spot_trade_processor";
 import { TransferProcessor } from "./request_processors/transfer_processor";
 import { WithdrawalProcessor } from "./request_processors/withdrawal_processor";
 import { AmmUpdateProcessor } from "./request_processors/amm_update_processor";
-import { SpotTradeProcessor } from "./request_processors/spot_trade_processor";
+import { SignatureVerificationProcessor } from "./request_processors/signature_verification_processor";
+import { NftMintProcessor } from "./request_processors/nft_mint_processor";
+import { NftDataProcessor } from "./request_processors/nft_data_processor";
+import * as fs from "fs";
 
-const testAccountPrivKey = "80fc4b4b75850d8c0958b341bb8eae1f79819a00902d3744aa02eb8c7b9cb190";
-const infuraUrlMain = "https://mainnet.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3";
-const provider = new PrivateKeyProvider(testAccountPrivKey, infuraUrlMain);
-const web3 = new Web3(provider);
+interface ThinBlock {
+  blockSize: number;
+  blockVersion: number;
+  data: string;
+  offchainData: string;
+  operator: string;
+  merkleRoot: string;
+  transactionHash: string;
+  requests?: any[];
+  noopSize?: number;
+}
 
-async function parseLoopringSubmitBlocksTx(txHash: string) {
+async function parseLoopringSubmitBlocksTx(txHash: string, web3: any) {
   const exchangeAddress = "0x0BABA1Ad5bE3a5C0a66E7ac838a129Bf948f1eA4";
   const owner = "0x5c367c1b2603ed166C62cEc0e4d47e9D5DC1c073";
   const submitBlocksFunctionSignature = "0xdcb2aa31"; // submitBlocksWithCallbacks
@@ -33,19 +42,6 @@ async function parseLoopringSubmitBlocksTx(txHash: string) {
         "bool",
         "bytes",
         "bytes"
-        /*{
-          "struct CallbackConfig": {
-          "struct BlockCallback[]": {
-          "struct TxCallback[]": {
-          txIdx: "uint16",
-          receiverIdx: "uint16",
-          data: "bytes"
-          },
-          blockIdx: "uint16"
-          },
-          receivers: "address[]"
-          }
-          }*/
       ],
       "0x" + transaction.input.slice(2 + 4 * 2)
     );
@@ -94,25 +90,16 @@ async function parseLoopringSubmitBlocksTx(txHash: string) {
       // console.log("merkleRoot: " + merkleRoot);
 
       // Create the block
-      const newBlock = {
-        exchange: exchangeAddress,
-        blockIdx: i,
-        blockType,
+      const newBlock: ThinBlock = {
         blockSize,
         blockVersion,
         data,
         offchainData,
         operator: owner,
-        origin: transaction.from,
-        blockFee: new BN(0),
         merkleRoot,
-        timestamp: 0,
-        numRequestsProcessed: 0,
-        totalNumRequestsProcessed: 0,
         transactionHash: txHash
       };
 
-      console.log("newBlock:", newBlock);
       processBlock(newBlock);
     }
   } else {
@@ -120,18 +107,7 @@ async function parseLoopringSubmitBlocksTx(txHash: string) {
   }
 }
 
-async function getInputData(txHash: string) {
-  return (await web3.eth.getTransaction(txHash)).input;
-}
-
-function decodeInputDate(data: string) {
-  const decoder = new InputDataDecoder("ABI/version36/LoopringIOExchangeOwner.abi");
-  const decoded = decoder.decodeData(data);
-  console.log("result:", JSON.stringify(decoded, undefined, 2));
-  return decoded;
-}
-
-function processBlock(block: any) {
+function processBlock(block: ThinBlock) {
   let requests: any[] = [];
 
   let data = new Bitstream(block.data);
@@ -139,21 +115,16 @@ function processBlock(block: any) {
 
   // General data
   offset += 20 + 32 + 32 + 4;
-  const protocolFeeTakerBips = data.extractUint8(offset);
+  // const protocolFeeTakerBips = data.extractUint8(offset);
   offset += 1;
-  const protocolFeeMakerBips = data.extractUint8(offset);
+  // const protocolFeeMakerBips = data.extractUint8(offset);
   offset += 1;
-  const numConditionalTransactions = data.extractUint32(offset);
+  // const numConditionalTransactions = data.extractUint32(offset);
   offset += 4;
-  const operatorAccountID = data.extractUint32(offset);
+  // const operatorAccountID = data.extractUint32(offset);
   offset += 4;
 
-  const ctx: BlockContext = {
-    protocolFeeTakerBips,
-    protocolFeeMakerBips,
-    operatorAccountID
-  };
-
+  let noopSize = 0;
   for (let i = 0; i < block.blockSize; i++) {
     const size1 = 29;
     const size2 = 39;
@@ -168,9 +139,12 @@ function processBlock(block: any) {
 
     let request: any = {};
     if (txType === TransactionType.NOOP) {
+      noopSize ++;
       // Do nothing
     } else if (txType === TransactionType.DEPOSIT) {
       request = DepositProcessor.extractData(txData);
+    } else if (txType === TransactionType.SPOT_TRADE) {
+      request = SpotTradeProcessor.extractData(txData);
     } else if (txType === TransactionType.TRANSFER) {
       request = TransferProcessor.extractData(txData);
     } else if (txType === TransactionType.WITHDRAWAL) {
@@ -179,28 +153,109 @@ function processBlock(block: any) {
       request = AccountUpdateProcessor.extractData(txData);
     } else if (txType === TransactionType.AMM_UPDATE) {
       request = AmmUpdateProcessor.extractData(txData);
-    } else if (txType === TransactionType.SPOT_TRADE) {
-      request = SpotTradeProcessor.extractData(txData);
+    } else if (txType === TransactionType.SIGNATURE_VERIFICATION) {
+      request = SignatureVerificationProcessor.extractData(txData);
+    } else if (txType === TransactionType.NFT_MINT) {
+      if (i + 1 < block.blockSize) {
+        txData.addHex(
+          getTxData(data, offset, i + 1, block.blockSize).getData()
+        );
+        if (i + 2 < block.blockSize) {
+          txData.addHex(
+            getTxData(data, offset, i + 2, block.blockSize).getData()
+          );
+        }
+      }
+      request = NftMintProcessor.extractData(txData);
+    } else if (txType === TransactionType.NFT_DATA) {
+      request = NftDataProcessor.extractData(txData);
     } else {
-      // assert(false, "unknown transaction type: " + txType);
-      console.log("unknown transaction type: " + txType, "; txData:", txData.getData());
+      assert(false, "unknown transaction type: " + txType);
     }
+
     request.type = TransactionType[txType];
     request.txData = txData.getData();
 
-    requests.push(request);
+    if (txType === TransactionType.NOOP) {
+      if (noopSize == 1) {
+        requests.push(request);
+      }
+    } else {
+      requests.push(request);
+    }
   }
 
-  console.log("requests:", requests);
-  return requests;
+  block.requests = requests;
+  block.noopSize = noopSize;
+
+  const replacer = function(key: string, value: any) {
+    if ( key === "tokenWeight" ||
+      key === "balance" ||
+      key === "amount" ||
+      key === "fee" ||
+      key === "fillSA" ||
+      key === "fillSB" ||
+      key === "feeA" ||
+      key === "feeB") {
+      // console.log("key:", key, "value:", value);
+      const newValue = new BN(value, 16).toString(10);
+      // console.log("newValue:", newValue);
+      return newValue;
+    } else {
+      return value;
+    }
+  };
+
+  const blockJson = JSON.stringify(block, replacer, 2);
+  console.log("block:", blockJson);
+  const resultFile = "result/" + block.transactionHash + ".json";
+  fs.writeFileSync(resultFile, blockJson);
+  console.log("parsed data saved to file:", resultFile);
 }
 
+function getTxData(
+  data: Bitstream,
+  offset: number,
+  txIdx: number,
+  blockSize: number
+) {
+  const size1 = 29;
+  const size2 = 39;
+  const txData1 = data.extractData(offset + txIdx * size1, size1);
+  const txData2 = data.extractData(
+    offset + blockSize * size1 + txIdx * size2,
+    size2
+  );
+  return new Bitstream(txData1 + txData2);
+}
 
 async function main() {
-  const testTxHash = "0xe97d7e19f80e474ef4637b950a0320440fbc94442f406ec2347e9d98b362e480";
-  await parseLoopringSubmitBlocksTx(testTxHash);
+  const args = process.argv.slice(2);
+  let network = "mainnet";
+  let txHash = "";
+  if (args[0] == "--network") {
+    assert(args.length >= 3, "Error: not enough arguments!");
+    assert(args[1] === "mainnet" || args[1] === "goerli", "Error: unsupported network!");
+    network = args[1];
+    txHash = args[2];
+  } else {
+    assert(args.length == 1, "Error: unsupported options!");
+    txHash = args[0];
+  }
+
+  let ethNodeUrl = "https://mainnet.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3";
+  if (network === "goerli") {
+    ethNodeUrl = "https://goerli.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3";
+  }
+
+  const Web3 = require("web3");
+  const testAccountPrivKey = "11".repeat(32);
+  const provider = new PrivateKeyProvider(testAccountPrivKey, ethNodeUrl);
+  const web3 = new Web3(provider);
+
+  await parseLoopringSubmitBlocksTx(txHash, web3);
 }
 
 main()
   .then(() => process.exit(0))
-  .catch((err) => console.error(err))
+  .catch((err) => {console.error(err); process.exit(1)})

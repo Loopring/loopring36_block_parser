@@ -1,6 +1,5 @@
-import * as BN from "bn.js";
+import BN from "bn.js";
 import { Bitstream } from "../bitstream";
-import { Constants } from "../constants";
 
 interface Deposit {
   to?: string;
@@ -13,6 +12,7 @@ interface Deposit {
  * Processes deposit requests.
  */
 export class DepositProcessor {
+
   public static extractData(data: Bitstream) {
     const deposit: Deposit = {};
     let offset = 1;

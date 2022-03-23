@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "es6",
     "downlevelIteration": true,
+    "allowSyntheticDefaultImports": true,
     "rootDir": "src",
     "lib": [
       "dom",
