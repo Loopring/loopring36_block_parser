@@ -1,11 +1,11 @@
-## loopring36-data-parser
+# loopring36-data-parser
 
-### install dependencies
+## install dependencies
 ```
 > yarn / npm install
 ```
 
-### run
+## run
 ```
 > ts-node src/parse.ts [--network <mainnet|goerli>] <txHash>  
     options:   
