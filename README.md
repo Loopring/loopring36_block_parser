@@ -1,4 +1,4 @@
-# loopring36-data-parser
+# loopring36-block-parser
 
 ## install dependencies
 ```
