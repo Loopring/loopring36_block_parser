@@ -19,4 +19,4 @@
 ```
 
 ## Parsed result:  
-parsed result will be saved to result directory, named as <txHash>.json
+parsed result will be saved to result directory, named as [txHash].json
