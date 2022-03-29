@@ -173,7 +173,8 @@ function processBlock(block: ThinBlock) {
       assert(false, "unknown transaction type: " + txType);
     }
 
-    request.type = TransactionType[txType];
+    request.type = adjustTxType(txType, request);
+    console.log("request.type:", request.type);
     request.txData = txData.getData();
 
     if (txType === TransactionType.NOOP) {
@@ -211,6 +212,28 @@ function processBlock(block: ThinBlock) {
   const resultFile = "result/" + block.transactionHash + ".json";
   fs.writeFileSync(resultFile, blockJson);
   console.log("parsed data saved to file:", resultFile);
+}
+
+function adjustTxType(txType: TransactionType, request: any) {
+  let adjustedType = TransactionType[txType];
+  if (txType === TransactionType.TRANSFER) {
+    if (request.accountFromID <= 10000) {
+      adjustedType = "AMM_EXIT";
+    }
+    if (request.accountToID <= 10000) {
+      adjustedType = "AMM_JOIN";
+    }
+  }
+
+  if (txType == TransactionType.SPOT_TRADE) {
+    if (request.accountIdA <= 10000 || request.accountIdB <= 10000) {
+      adjustedType = "SWAP";
+    } else {
+      adjustedType = "TRADE";
+    }
+  }
+
+  return adjustedType;
 }
 
 function getTxData(
