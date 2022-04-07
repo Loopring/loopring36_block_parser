@@ -152,12 +152,8 @@ export interface OnchainWithdrawal {
  * Trading data for a ring-settlement.
  */
 export interface SpotTrade {
-  /** The exchange the trade was made on. */
-  exchange: string;
-  /** The block this trade was pocessed in. */
-  blockIdx: number;
   /** The request index of this trade in the processed requests list (@see getProcessedRequest). */
-  requestIdx: number;
+  requestIdx?: number;
 
   /** The account of the taker. */
   accountIdA: number;
@@ -166,7 +162,9 @@ export interface SpotTrade {
   /** Whether the taker order is a buy or sell order. */
   fillAmountBorSA: boolean;
   /** The token the taker order sells. */
-  tokenA: number;
+  tokenAS: number;
+  /** The token the taker order buys. */
+  tokenAB: number;
   /** The amount of tokens (in tokenS) the taker sells. */
   fillSA: BN;
   /** The fee (in tokenB) paid by the taker. */
@@ -181,7 +179,9 @@ export interface SpotTrade {
   /** Whether the maker order is a buy or sell order. */
   fillAmountBorSB: boolean;
   /** The token the maker order sells. */
-  tokenB: number;
+  tokenBS: number;
+  /** The token the maker order buys. */
+  tokenBB: number;
   /** The amount of tokens (in tokenS) the maker sells. */
   fillSB: BN;
   /** The fee (in tokenB) paid by the maker. */

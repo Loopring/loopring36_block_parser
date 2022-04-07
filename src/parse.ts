@@ -35,6 +35,7 @@ async function parseLoopringSubmitBlocksTx(txHash: string, web3: any) {
   const submitBlocksFunctionSignature = "0xdcb2aa31"; // submitBlocksWithCallbacks
 
   const transaction = await web3.eth.getTransaction(txHash);
+  console.log("transaction:", transaction);
 
   if (transaction.input.startsWith(submitBlocksFunctionSignature)) {
     const decodedInput = web3.eth.abi.decodeParameters(
@@ -172,6 +173,8 @@ function processBlock(block: ThinBlock) {
     } else {
       assert(false, "unknown transaction type: " + txType);
     }
+
+    request.requestIdx = i;
 
     request.type = adjustTxType(txType, request);
     console.log("request.type:", request.type);

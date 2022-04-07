@@ -2,6 +2,7 @@ import BN from "bn.js";
 import { Bitstream } from "../bitstream";
 
 interface Deposit {
+  requestIdx?: number;
   to?: string;
   toAccountID?: number;
   tokenID?: number;

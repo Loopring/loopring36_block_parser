@@ -2,6 +2,7 @@ import * as BN from "bn.js";
 import { FloatEncoding } from "./float";
 
 export class Constants {
+
   static readonly BINARY_TREE_DEPTH_STORAGE = 14;
   static readonly BINARY_TREE_DEPTH_ACCOUNTS = 32;
   static readonly BINARY_TREE_DEPTH_TOKENS = 16;
@@ -13,6 +14,8 @@ export class Constants {
   static readonly NUM_STORAGE_SLOTS = 2 ** Constants.BINARY_TREE_DEPTH_STORAGE;
 
   static readonly MAX_NUM_TOKENS = 2 ** 16;
+
+  static readonly NFT_TOKEN_ID_START = 2 ** 15;
 
   static readonly MAX_AMOUNT = new BN(2).pow(new BN(96)).sub(new BN(1));
 
@@ -34,5 +37,9 @@ export class Constants {
     "21888242871839275222246405745257275088548364400416034343698204186575808495617",
     10
   );
+
+  public static isNFT(tokenID: number) {
+    return tokenID >= this.NFT_TOKEN_ID_START;
+  }
 
 }

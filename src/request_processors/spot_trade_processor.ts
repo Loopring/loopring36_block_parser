@@ -2,17 +2,24 @@ import * as BN from "bn.js";
 import { Bitstream } from "../bitstream";
 import { Constants } from "../constants";
 import { fromFloat } from "../float";
+import {
+  SpotTrade
+} from "../types";
 
 interface SettlementValues {
   fillSA: BN;
   fillBA: BN;
-  feeA: BN;
-  protocolFeeA: BN;
+  feeSA: BN;
+  feeBA: BN;
+  protocolFeeSA: BN;
+  protocolFeeBA: BN;
 
   fillSB: BN;
   fillBB: BN;
-  feeB: BN;
-  protocolFeeB: BN;
+  feeSB: BN;
+  feeBB: BN;
+  protocolFeeSB: BN;
+  protocolFeeBB: BN;
 }
 
 /**
@@ -20,7 +27,8 @@ interface SettlementValues {
  */
 export class SpotTradeProcessor {
   public static extractData(data: Bitstream) {
-    let offset = 1;
+
+   let offset = 1;
 
     // Storage IDs
     const storageIdA = data.extractUint32(offset);
@@ -35,9 +43,9 @@ export class SpotTradeProcessor {
     offset += 4;
 
     // Tokens
-    const tokenA = data.extractUint16(offset);
+    const tokenAS = data.extractUint16(offset);
     offset += 2;
-    const tokenB = data.extractUint16(offset);
+    const tokenBS = data.extractUint16(offset);
     offset += 2;
 
     // Fills
@@ -52,20 +60,38 @@ export class SpotTradeProcessor {
     const orderDataB = data.extractUint8(offset);
     offset += 1;
 
+    // Target tokenIDs
+    let tokenAB = data.extractUint16(offset);
+    offset += 2;
+    let tokenBB = data.extractUint16(offset);
+    offset += 2;
+
+    // Extra fee data
+    let feeBipsHiA = data.extractUint8(offset);
+    offset += 1;
+    let feeBipsHiB = data.extractUint8(offset);
+    offset += 1;
+
     // Further extraction of packed data
     const limitMaskA = orderDataA & 0b10000000;
-    const feeBipsA = orderDataA & 0b00111111;
+    const feeBipsA = (feeBipsHiA << 6) | (orderDataA & 0b00111111);
     const fillAmountBorSA = limitMaskA > 0;
 
     const limitMaskB = orderDataB & 0b10000000;
-    const feeBipsB = orderDataB & 0b00111111;
+    const feeBipsB = (feeBipsHiB << 6) | (orderDataB & 0b00111111);
     const fillAmountBorSB = limitMaskB > 0;
 
     // Decode the float values
     const fillSA = fromFloat(fFillSA, Constants.Float24Encoding);
     const fillSB = fromFloat(fFillSB, Constants.Float24Encoding);
 
+    // Decode target tokenIDs
+    tokenAB = tokenAB !== 0 ? tokenAB : tokenBS;
+    tokenBB = tokenBB !== 0 ? tokenBB : tokenAS;
+
     const s = this.calculateSettlementValues(
+      tokenAS,
+      tokenBS,
       0,
       0,
       fillSA,
@@ -75,28 +101,33 @@ export class SpotTradeProcessor {
     );
 
     // Create struct
-    const trade: any = {
+    const trade: SpotTrade = {
+      requestIdx: 0,
       accountIdA,
       orderIdA: storageIdA,
       fillAmountBorSA,
-      tokenA,
+      tokenAS,
+      tokenAB,
       fillSA: s.fillSA,
-      feeA: s.feeA,
-      protocolFeeA: s.protocolFeeA,
+      feeA: s.feeBA,
+      protocolFeeA: new BN(0),
 
       accountIdB,
       orderIdB: storageIdB,
       fillAmountBorSB,
-      tokenB,
+      tokenBS,
+      tokenBB,
       fillSB: s.fillSB,
-      feeB: s.feeB,
-      protocolFeeB: s.protocolFeeB
+      feeB: s.feeBB,
+      protocolFeeB: new BN(0),
     };
 
     return trade;
   }
 
   private static calculateSettlementValues(
+    tokenAS: number,
+    tokenBS: number,
     protocolFeeTakerBips: number,
     protocolFeeMakerBips: number,
     fillSA: BN,
@@ -106,28 +137,49 @@ export class SpotTradeProcessor {
   ) {
     const fillBA = fillSB;
     const fillBB = fillSA;
-    const [feeA, protocolFeeA] = this.calculateFees(
-      fillBA,
-      protocolFeeTakerBips,
-      feeBipsA
-    );
 
-    const [feeB, protocolFeeB] = this.calculateFees(
+    const feeBipsSA = !Constants.isNFT(tokenBS) ? 0 : feeBipsA;
+    const feeBipsBA = !Constants.isNFT(tokenBS) ? feeBipsA : 0;
+    const feeBipsSB = !Constants.isNFT(tokenAS) ? 0 : feeBipsB;
+    const feeBipsBB = !Constants.isNFT(tokenAS) ? feeBipsB : 0;
+
+    const allNFT = Constants.isNFT(tokenAS) && Constants.isNFT(tokenBS);
+
+    const [feeSA, protocolFeeSA] = this.calculateFees(
+      fillSA,
+      0,
+      feeBipsSA
+    );
+    const [feeBA, protocolFeeBA] = this.calculateFees(
+      fillBA,
+      0,
+      feeBipsBA
+    );
+    const [feeSB, protocolFeeSB] = this.calculateFees(
+      fillSB,
+      0,
+      feeBipsSB
+    );
+    const [feeBB, protocolFeeBB] = this.calculateFees(
       fillBB,
-      protocolFeeMakerBips,
-      feeBipsB
+      0,
+      feeBipsBB
     );
 
     const settlementValues: SettlementValues = {
       fillSA,
       fillBA,
-      feeA,
-      protocolFeeA,
+      feeSA,
+      feeBA,
+      protocolFeeSA,
+      protocolFeeBA,
 
       fillSB,
       fillBB,
-      feeB,
-      protocolFeeB
+      feeSB,
+      feeBB,
+      protocolFeeSB,
+      protocolFeeBB
     };
     return settlementValues;
   }
@@ -141,4 +193,5 @@ export class SpotTradeProcessor {
     const fee = fillB.mul(new BN(feeBips)).div(new BN(10000));
     return [fee, protocolFee];
   }
+
 }

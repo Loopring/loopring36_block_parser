@@ -4,6 +4,7 @@ import { Constants } from "../constants";
 import { fromFloat } from "../float";
 
 interface Withdrawal {
+  requestIdx?: number;
   type?: number;
   from?: string;
   fromAccountID?: number;

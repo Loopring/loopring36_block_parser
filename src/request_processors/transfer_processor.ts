@@ -4,6 +4,7 @@ import { Constants } from "../constants";
 import { fromFloat } from "../float";
 
 interface Transfer {
+  requestIdx?: number;
   accountFromID?: number;
   accountToID?: number;
   tokenID?: number;
@@ -23,7 +24,9 @@ interface Transfer {
  */
 export class TransferProcessor {
   public static extractData(data: Bitstream) {
-    const transfer: Transfer = {};
+    const transfer: Transfer = {
+      requestIdx: 0,
+    };
     let offset = 1;
 
     // Check that this is a conditional update

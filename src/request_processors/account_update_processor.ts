@@ -5,6 +5,7 @@ import { EdDSA } from "../eddsa";
 import { fromFloat } from "../float";
 
 interface AccountUpdate {
+  requestIdx?: number;
   owner?: string;
   accountID?: number;
   feeTokenID?: number;

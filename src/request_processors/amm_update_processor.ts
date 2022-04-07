@@ -2,6 +2,7 @@ import BN from "bn.js";
 import { Bitstream } from "../bitstream";
 
 interface AmmUpdate {
+  requestIdx?: number;
   owner?: string;
   accountID?: number;
   tokenID?: number;

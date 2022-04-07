@@ -1,6 +1,7 @@
 import { Bitstream } from "../bitstream";
 
 interface NftData {
+  requestIdx?: number;
   type?: number;
   accountID?: number;
   tokenID?: number;

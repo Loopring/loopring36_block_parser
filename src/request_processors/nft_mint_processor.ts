@@ -8,6 +8,7 @@ const Poseidon = require("../poseidon");
 const assert = require("assert");
 
 interface NftMint {
+  requestIdx?: number;
   type?: number;
   minterAccountID?: number;
   tokenAccountID?: number;

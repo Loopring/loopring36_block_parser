@@ -1,6 +1,7 @@
 import { Bitstream } from "../bitstream";
 
 interface SignatureVerification {
+  requestIdx?: number;
   owner?: string;
   accountID?: number;
   data?: string;
