@@ -81,6 +81,8 @@ export class SpotTradeProcessor {
     const feeBipsB = (feeBipsHiB << 6) | (orderDataB & 0b00111111);
     const fillAmountBorSB = limitMaskB > 0;
 
+    //console.log("feeBipsA, feeBipsB:", feeBipsA, feeBipsB);
+
     // Decode the float values
     const fillSA = fromFloat(fFillSA, Constants.Float24Encoding);
     const fillSB = fromFloat(fFillSB, Constants.Float24Encoding);
@@ -109,7 +111,7 @@ export class SpotTradeProcessor {
       tokenAS,
       tokenAB,
       fillSA: s.fillSA,
-      feeA: s.feeBA,
+      feeA: s.feeSA,
       protocolFeeA: new BN(0),
 
       accountIdB,

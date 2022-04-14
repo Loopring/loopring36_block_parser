@@ -29,7 +29,7 @@ interface ThinBlock {
   noopSize?: number;
 }
 
-async function parseLoopringSubmitBlocksTx(txHash: string, web3: any) {
+export async function parseLoopringSubmitBlocksTx(txHash: string, web3: any) {
   const exchangeAddress = "0x0BABA1Ad5bE3a5C0a66E7ac838a129Bf948f1eA4";
   const owner = "0x5c367c1b2603ed166C62cEc0e4d47e9D5DC1c073";
   const submitBlocksFunctionSignature = "0xdcb2aa31"; // submitBlocksWithCallbacks
@@ -66,7 +66,7 @@ async function parseLoopringSubmitBlocksTx(txHash: string, web3: any) {
       ],
       "0x" +
         data /*transaction.input*/
-        .slice(2 + 4 * 2)
+          .slice(2 + 4 * 2)
     );
     //console.log(decodedInputs);
     const numBlocks = decodedInputs[0].length;
@@ -134,29 +134,11 @@ function processBlock(block: ThinBlock) {
       offset + block.blockSize * size1 + i * size2,
       size2
     );
-    const txData = new Bitstream(txData1 + txData2);
 
+    const txData = new Bitstream(txData1 + txData2);
     const txType = txData.extractUint8(0);
 
-    let request: any = {};
-    if (txType === TransactionType.NOOP) {
-      noopSize ++;
-      // Do nothing
-    } else if (txType === TransactionType.DEPOSIT) {
-      request = DepositProcessor.extractData(txData);
-    } else if (txType === TransactionType.SPOT_TRADE) {
-      request = SpotTradeProcessor.extractData(txData);
-    } else if (txType === TransactionType.TRANSFER) {
-      request = TransferProcessor.extractData(txData);
-    } else if (txType === TransactionType.WITHDRAWAL) {
-      request = WithdrawalProcessor.extractData(txData);
-    } else if (txType === TransactionType.ACCOUNT_UPDATE) {
-      request = AccountUpdateProcessor.extractData(txData);
-    } else if (txType === TransactionType.AMM_UPDATE) {
-      request = AmmUpdateProcessor.extractData(txData);
-    } else if (txType === TransactionType.SIGNATURE_VERIFICATION) {
-      request = SignatureVerificationProcessor.extractData(txData);
-    } else if (txType === TransactionType.NFT_MINT) {
+    if (txType === TransactionType.NFT_MINT) {
       if (i + 1 < block.blockSize) {
         txData.addHex(
           getTxData(data, offset, i + 1, block.blockSize).getData()
@@ -167,20 +149,13 @@ function processBlock(block: ThinBlock) {
           );
         }
       }
-      request = NftMintProcessor.extractData(txData);
-    } else if (txType === TransactionType.NFT_DATA) {
-      request = NftDataProcessor.extractData(txData);
-    } else {
-      assert(false, "unknown transaction type: " + txType);
     }
 
+    const request = parseSingleTx(txData);
     request.requestIdx = i;
 
-    request.type = adjustTxType(txType, request);
-    console.log("request.type:", request.type);
-    request.txData = txData.getData();
-
-    if (txType === TransactionType.NOOP) {
+    if (request.txType === "NOOP") {
+      noopSize += 1;
       if (noopSize == 1) {
         requests.push(request);
       }
@@ -191,24 +166,6 @@ function processBlock(block: ThinBlock) {
 
   block.requests = requests;
   block.noopSize = noopSize;
-
-  const replacer = function(key: string, value: any) {
-    if ( key === "tokenWeight" ||
-      key === "balance" ||
-      key === "amount" ||
-      key === "fee" ||
-      key === "fillSA" ||
-      key === "fillSB" ||
-      key === "feeA" ||
-      key === "feeB") {
-      // console.log("key:", key, "value:", value);
-      const newValue = new BN(value, 16).toString(10);
-      // console.log("newValue:", newValue);
-      return newValue;
-    } else {
-      return value;
-    }
-  };
 
   const blockJson = JSON.stringify(block, replacer, 2);
   console.log("block:", blockJson);
@@ -255,33 +212,55 @@ function getTxData(
   return new Bitstream(txData1 + txData2);
 }
 
-async function main() {
-  const args = process.argv.slice(2);
-  let network = "mainnet";
-  let txHash = "";
-  if (args[0] == "--network") {
-    assert(args.length >= 3, "Error: not enough arguments!");
-    assert(args[1] === "mainnet" || args[1] === "goerli", "Error: unsupported network!");
-    network = args[1];
-    txHash = args[2];
+export function replacer(key: string, value: any) {
+  if ( key === "tokenWeight" ||
+    key === "balance" ||
+    key === "amount" ||
+    key === "fee" ||
+    key === "fillSA" ||
+    key === "fillSB" ||
+    key === "feeA" ||
+    key === "feeB") {
+    // console.log("key:", key, "value:", value);
+    const newValue = new BN(value, 16).toString(10);
+    // console.log("newValue:", newValue);
+    return newValue;
   } else {
-    assert(args.length == 1, "Error: unsupported options!");
-    txHash = args[0];
+    return value;
   }
-
-  let ethNodeUrl = "https://mainnet.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3";
-  if (network === "goerli") {
-    ethNodeUrl = "https://goerli.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3";
-  }
-
-  const Web3 = require("web3");
-  const testAccountPrivKey = "11".repeat(32);
-  const provider = new PrivateKeyProvider(testAccountPrivKey, ethNodeUrl);
-  const web3 = new Web3(provider);
-
-  await parseLoopringSubmitBlocksTx(txHash, web3);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {console.error(err); process.exit(1)})
+export function parseSingleTx(txData: Bitstream) {
+  const txType = txData.extractUint8(0);
+
+  let request: any = {};
+  if (txType === TransactionType.NOOP) {
+    // Do nothing
+  } else if (txType === TransactionType.DEPOSIT) {
+    request = DepositProcessor.extractData(txData);
+  } else if (txType === TransactionType.SPOT_TRADE) {
+    request = SpotTradeProcessor.extractData(txData);
+  } else if (txType === TransactionType.TRANSFER) {
+    request = TransferProcessor.extractData(txData);
+  } else if (txType === TransactionType.WITHDRAWAL) {
+    request = WithdrawalProcessor.extractData(txData);
+  } else if (txType === TransactionType.ACCOUNT_UPDATE) {
+    request = AccountUpdateProcessor.extractData(txData);
+  } else if (txType === TransactionType.AMM_UPDATE) {
+    request = AmmUpdateProcessor.extractData(txData);
+  } else if (txType === TransactionType.SIGNATURE_VERIFICATION) {
+    request = SignatureVerificationProcessor.extractData(txData);
+  } else if (txType === TransactionType.NFT_MINT) {
+    request = NftMintProcessor.extractData(txData);
+  } else if (txType === TransactionType.NFT_DATA) {
+    request = NftDataProcessor.extractData(txData);
+  } else {
+    assert(false, "unknown transaction type: " + txType);
+  }
+
+  request.type = adjustTxType(txType, request);
+  console.log("request.type:", request.type);
+  request.txData = txData.getData();
+
+  return request;
+}

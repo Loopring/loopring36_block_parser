@@ -1,4 +1,4 @@
-# loopring36-block-parser
+a# loopring36-block-parser
 
 ## Install dependencies
 ```
@@ -7,7 +7,7 @@
 
 ## Run
 ```
-> ts-node src/parse.ts [--network <mainnet|goerli>] <txHash>  
+> ts-node src/main.ts [--network <mainnet|goerli>] <txHash>  
     options:   
     --network: mainnet/goerli, default is mainnet  
 
