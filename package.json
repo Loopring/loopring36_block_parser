@@ -1,8 +1,9 @@
 {
-  "name": "protocols",
+  "name": "loopring36-block-parser",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "exports": "./out/index.js",
   "dependencies": {
     "axios": "^0.21.0",
     "ethereum-input-data-decoder": "^0.3.1",

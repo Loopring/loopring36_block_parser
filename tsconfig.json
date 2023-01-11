@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "es5",
     "downlevelIteration": true,
     "allowSyntheticDefaultImports": true,
     "rootDir": "src",
@@ -9,7 +9,10 @@
       "es6",
       "es2015.collection",
       "es2015.iterable"
-    ]
+    ],
+    "outDir": "out",
+    "allowJs": true,
+    "sourceMap": true
   },
   "include": [
     "src/"
