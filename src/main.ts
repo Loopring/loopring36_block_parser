@@ -28,17 +28,9 @@ async function main() {
       ethNodeUrl = "https://goerli.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3";
     }
 
-    // const testAccountPrivKey = "11".repeat(32);
-    // const provider = new PrivateKeyProvider(testAccountPrivKey, ethNodeUrl);
-    // const web3 = new Web3(provider);
-    // const ethNodeUrl = network === 'mainnet'
-    // ? "https://mainnet.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3"
-    // : "https://goerli.infura.io/v3/a06ed9c6b5424b61beafff27ecc3abf3"
-  // const testAccountPrivKey = "11".repeat(32);
-  // const provider = new PrivateKeyProvider(testAccountPrivKey, ethNodeUrl);
-  // const web3 = new Web3(provider);
+    
     const provider = new providers.JsonRpcProvider(ethNodeUrl)
-    await parseLoopringSubmitBlocksTx(txHash, provider);
+    // await parseLoopringSubmitBlocksTx(txHash, provider);
   }
 
 }

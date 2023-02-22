@@ -16,6 +16,7 @@ import { SignatureVerificationProcessor } from "./request_processors/signature_v
 import { NftMintProcessor } from "./request_processors/nft_mint_processor";
 import { NftDataProcessor } from "./request_processors/nft_data_processor";
 import { ethers, providers } from "ethers";
+import axios from "axios";
 
 interface ThinBlock {
   blockSize: number;
@@ -29,14 +30,25 @@ interface ThinBlock {
   noopSize?: number;
 }
 
-export async function parseLoopringSubmitBlocksTx(txHash: string, provider: providers.BaseProvider): Promise<ThinBlock[]> {
+export async function parseLoopringSubmitBlocksTx(txHash: string, rpcURL: string): Promise<ThinBlock[]> {
   const exchangeAddress = "0x0BABA1Ad5bE3a5C0a66E7ac838a129Bf948f1eA4";
   const owner = "0x5c367c1b2603ed166C62cEc0e4d47e9D5DC1c073";
   const submitBlocksFunctionSignature = "0xdcb2aa31"; // submitBlocksWithCallbacks
 
-  
-  const transaction = await provider.getTransaction(txHash);
-  console.log("transaction:", transaction);
+  // provider.
+  const response = await axios({
+    url: rpcURL,
+    data: {
+      "jsonrpc":"2.0",
+      "method":"eth_getTransactionByHash",
+      "params":[txHash],
+      "id":1
+    },
+    method: 'POST'
+  })
+  const transaction = {
+    data: response.data.result.input
+  }
   if (transaction.data.startsWith(submitBlocksFunctionSignature)) {
     const decoder = new ethers.utils.AbiCoder()
     const decodedInput = decoder.decode(

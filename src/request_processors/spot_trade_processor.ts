@@ -148,22 +148,22 @@ export class SpotTradeProcessor {
     const allNFT = Constants.isNFT(tokenAS) && Constants.isNFT(tokenBS);
 
     const [feeSA, protocolFeeSA] = this.calculateFees(
-      fillSA,
-      0,
-      feeBipsSA
-    );
-    const [feeBA, protocolFeeBA] = this.calculateFees(
       fillBA,
       0,
-      feeBipsBA
+      feeBipsA
+    );
+    const [feeBA, protocolFeeBA] = this.calculateFees(
+      fillBB,
+      0,
+      feeBipsB
     );
     const [feeSB, protocolFeeSB] = this.calculateFees(
-      fillSB,
+      fillSA,
       0,
       feeBipsSB
     );
     const [feeBB, protocolFeeBB] = this.calculateFees(
-      fillBB,
+      fillSB,
       0,
       feeBipsBB
     );

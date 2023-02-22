@@ -1,6 +1,6 @@
 {
-  "name": "loopring36-block-parser",
-  "version": "1.0.0",
+  "name": "loopring36-block-parser2",
+  "version": "0.0.4",
   "license": "MIT",
   "exports": "./out/index.js",
   "main": "./out/index.js",
