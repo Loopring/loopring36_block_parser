@@ -10,6 +10,7 @@ interface AccountUpdate {
   accountID?: number;
   feeTokenID?: number;
   fee?: BN;
+  publicKey?: string;
   publicKeyX?: string;
   publicKeyY?: string;
   validUntil?: number;
@@ -39,6 +40,7 @@ export class AccountUpdateProcessor {
     );
     offset += 2;
     const publicKey = data.extractData(offset, 32);
+    update.publicKey = publicKey;
     offset += 32;
     update.nonce = data.extractUint32(offset);
     offset += 4;
